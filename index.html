@@ -671,6 +671,12 @@ class Component extends DCLogic {
       g({label:'Marketplace (Amazon)',type:'detail',indent:1,vals:A('amazonGross'),yoy:yk('amazonGross')});
       g({label:'DTC (Shopify)',type:'detail',indent:1,vals:A('shopifyGross'),yoy:yk('shopifyGross')});
     }
+    g({label:'vs. prior month — Total',type:'margin',growth:true,vals:mom(A('grossTotal'))});
+    g({label:'vs. prior month — Amazon',type:'margin',growth:true,vals:mom(A('amazonGross'))});
+    g({label:'vs. prior month — DTC',type:'margin',growth:true,vals:mom(A('shopifyGross'))});
+    g({label:'vs. prior year — Total',type:'margin',growth:true,vals:yoyM(A('grossTotal'),P('grossTotal'))});
+    g({label:'vs. prior year — Amazon',type:'margin',growth:true,vals:yoyM(A('amazonGross'),P('amazonGross'))});
+    g({label:'vs. prior year — DTC',type:'margin',growth:true,vals:yoyM(A('shopifyGross'),P('shopifyGross'))});
     g({label:'Returns & Adjustments',type:'group',group:'adj',vals:A('adjTotal')});
     if(e.adj){
       g({label:'Amazon returns',type:'detail',indent:1,vals:A('amazonReturns')});
@@ -759,8 +765,9 @@ class Component extends DCLogic {
   cfsDirect(){
     if(!this.state.data||!this.state.data.cashflowDirect) return [];
     const c=this.state.data.cashflowDirect; const R=[];
+    const oo=c.otherOperating||[0,0,0,0,0,0];
     const collected=this.cf6(c.amazonPayouts,c.shopifyPayouts);
-    const op=this.cf6(c.amazonPayouts,c.shopifyPayouts,c.creditCardPayment,c.salaries,c.contractors,c.supplierWires,c.bankFees,c.taxes);
+    const op=this.cf6(c.amazonPayouts,c.shopifyPayouts,c.creditCardPayment,c.salaries,c.contractors,c.supplierWires,c.bankFees,c.taxes,oo);
     const fin=this.cf6(c.sbaLoan,c.creditLine);
     R.push(this.mkRow({label:'Operating',type:'section',vals:[]}));
     R.push(this.mkRow({label:'Amazon payouts (cash in)',type:'line',vals:c.amazonPayouts}));
@@ -772,6 +779,7 @@ class Component extends DCLogic {
     R.push(this.mkRow({label:'Supplier / import wires',type:'line',vals:c.supplierWires}));
     R.push(this.mkRow({label:'Bank fees',type:'line',vals:c.bankFees}));
     R.push(this.mkRow({label:'Taxes',type:'line',vals:c.taxes}));
+    R.push(this.mkRow({label:'Other operating',type:'line',vals:oo}));
     R.push(this.mkRow({label:'Cash from Operating',type:'strong',vals:op}));
     R.push(this.mkRow({label:'Financing',type:'section',vals:[]}));
     R.push(this.mkRow({label:'SBA loan payment',type:'line',vals:c.sbaLoan}));
