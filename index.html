@@ -766,9 +766,10 @@ class Component extends DCLogic {
     if(!this.state.data||!this.state.data.cashflowDirect) return [];
     const c=this.state.data.cashflowDirect; const R=[];
     const oo=c.otherOperating||[0,0,0,0,0,0];
+    const ol=c.ownerLoan||[0,0,0,0,0,0];
     const collected=this.cf6(c.amazonPayouts,c.shopifyPayouts);
     const op=this.cf6(c.amazonPayouts,c.shopifyPayouts,c.creditCardPayment,c.salaries,c.contractors,c.supplierWires,c.bankFees,c.taxes,oo);
-    const fin=this.cf6(c.sbaLoan,c.creditLine);
+    const fin=this.cf6(c.sbaLoan,c.creditLine,ol);
     R.push(this.mkRow({label:'Operating',type:'section',vals:[]}));
     R.push(this.mkRow({label:'Amazon payouts (cash in)',type:'line',vals:c.amazonPayouts}));
     R.push(this.mkRow({label:'Shopify payouts (cash in)',type:'line',vals:c.shopifyPayouts}));
@@ -784,6 +785,7 @@ class Component extends DCLogic {
     R.push(this.mkRow({label:'Financing',type:'section',vals:[]}));
     R.push(this.mkRow({label:'SBA loan payment',type:'line',vals:c.sbaLoan}));
     R.push(this.mkRow({label:'Credit line draws / (repayments)',type:'line',vals:c.creditLine}));
+    R.push(this.mkRow({label:'Owner loan repayment (Pierre)',type:'line',vals:ol}));
     R.push(this.mkRow({label:'Cash from Financing',type:'strong',vals:fin}));
     R.push(this.mkRow({label:'Net Change in Cash',type:'strong',vals:c.net}));
     R.push(this.mkRow({label:'Beginning Bank Balance',type:'line',vals:c.beginningBank,ytdVal:c.beginningBank[0]}));
