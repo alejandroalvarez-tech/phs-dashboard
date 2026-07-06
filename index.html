@@ -449,15 +449,34 @@ class Component extends DCLogic {
 
     const money=v=>(v<0?'-$':'$')+Math.abs(Math.round(v)).toLocaleString('en-US');
 
+    // net revenue by channel (gross less that channel's returns & promos) + returns magnitude
+    let amzRev,amzRevLy,dtcRev,dtcRevLy,ret,retLy;
+    const DD=this.state.data&&this.state.data.isDetail;
+    if(DD){
+      amzRev  = DD.amazonGross.cur.map((v,i)=> v+(DD.amazonReturns.cur[i]||0)+(DD.amazonPromos.cur[i]||0));
+      amzRevLy= DD.amazonGross.pri.map((v,i)=> v+(DD.amazonReturns.pri[i]||0)+(DD.amazonPromos.pri[i]||0));
+      dtcRev  = DD.shopifyGross.cur.map((v,i)=> v+(DD.shopifyReturns.cur[i]||0)+(DD.shopifyPromos.cur[i]||0));
+      dtcRevLy= DD.shopifyGross.pri.map((v,i)=> v+(DD.shopifyReturns.pri[i]||0)+(DD.shopifyPromos.pri[i]||0));
+      ret     = DD.adjTotal.cur.map(v=>Math.abs(v||0));
+      retLy   = DD.adjTotal.pri.map(v=>Math.abs(v||0));
+    } else {
+      amzRev=d.marketplace; amzRevLy=ly.marketplace; dtcRev=d.dtc; dtcRevLy=ly.dtc;
+      ret=d.rev.map(()=>0); retLy=ly.rev.map(()=>0);
+    }
+
     const cfgs=[
       {label:'Revenue', kind:'money', cur:d.rev, ly:ly.rev, sub:'Net sales'},
-      {label:'Gross Margin', kind:'pct', num:d.gp, den:d.rev, lyNum:ly.gp, lyDen:ly.rev, sub:'of revenue'},
-      {label:'Contribution Margin', kind:'pct', num:x.cm, den:d.rev, lyNum:x.cmLy, lyDen:ly.rev, subMoney:x.cm},
-      {label:'EBITDA', kind:'money', cur:d.ebitda, ly:ly.ebitda, subPctOf:d.rev},
+      {label:'Amazon Revenue', kind:'money', cur:amzRev, ly:amzRevLy, sub:'Net · marketplace'},
+      {label:'DTC (Shopify) Revenue', kind:'money', cur:dtcRev, ly:dtcRevLy, sub:'Net · direct-to-consumer'},
+      {label:'Returns', kind:'money', cur:ret, ly:retLy, lowerBetter:true, sub:'Returns & adjustments'},
       {label:'Units Sold', kind:'count', cur:x.units, ly:x.unitsLy, sub:'Orders · packs'},
       {label:'Pairs Sold', kind:'count', cur:x.pairs, ly:x.pairsLy, sub:'Individual pairs'},
       {label:'Avg. Order Value', kind:'aov', cur:x.aov, ly:x.aovLy, sub:'Per DTC order'},
-      {label:'ACOS', kind:'pctDirect', cur:x.acos, ly:x.acosLy, lowerBetter:true, sub:'Ad spend / ad sales'}
+      {label:'ACOS', kind:'pctDirect', cur:x.acos, ly:x.acosLy, lowerBetter:true, sub:'Ad spend / ad sales'},
+      {label:'Gross Margin', kind:'pct', num:d.gp, den:d.rev, lyNum:ly.gp, lyDen:ly.rev, sub:'of revenue'},
+      {label:'Contribution Margin', kind:'pct', num:x.cm, den:d.rev, lyNum:x.cmLy, lyDen:ly.rev, subMoney:x.cm},
+      {label:'EBITDA', kind:'money', cur:d.ebitda, ly:ly.ebitda, subPctOf:d.rev},
+      {label:'Net Margin', kind:'pct', num:d.net, den:d.rev, lyNum:ly.net, lyDen:ly.rev, sub:'of revenue'}
     ];
 
     const build=(cfg)=>{
@@ -646,7 +665,7 @@ class Component extends DCLogic {
     return {
       type:o.type, label:o.label,
       chevron: o.group ? (this.state.exp[o.group]?'▾':'▸') : '',
-      cls: 'rowhover'+(o.group?' taprow':''),
+      cls: (o.type==='total'?'':'rowhover')+(o.group?' taprow':''),
       onClick: o.group ? this.toggle(o.group) : null,
       style: this.rowStyle(o.type),
       labelStyle: this.labelStyle(o.type,o.indent||0),
