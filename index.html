@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<div id="lockscreen" style="position:fixed; inset:0; z-index:99999; background:#EFEBE2; display:flex; align-items:center; justify-content:center; font-family:'Instrument Sans',sans-serif;">
+  <div style="background:#fff; border:1px solid #E4DFD4; border-radius:8px; padding:30px 34px; width:340px; box-shadow:0 12px 44px rgba(27,27,26,0.16); text-align:center;">
+    <div style="font-family:'Newsreader',serif; font-size:23px; color:#22314B; letter-spacing:0.03em;">pierre henry</div>
+    <div style="font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:#9A948A; font-weight:600; margin:4px 0 20px;">Month-End Report</div>
+    <input id="pw" type="password" placeholder="Enter password" autocomplete="current-password" style="width:100%; padding:11px 13px; border:1px solid #D9D3C7; border-radius:6px; font-size:14px; box-sizing:border-box; outline:none;" />
+    <div id="pwerr" style="color:#A23B34; font-size:12px; margin-top:8px; min-height:15px; text-align:left;"></div>
+    <button id="pwbtn" style="margin-top:10px; width:100%; padding:11px; background:#22314B; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">View dashboard</button>
+  </div>
+</div>
+<script>
+(function(){
+  var d64=function(s){return Uint8Array.from(atob(s),function(c){return c.charCodeAt(0);});};
+  async function unlock(pw){
+    var e=await fetch('phs-data.enc',{cache:'no-store'}).then(function(r){return r.json();});
+    var km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+    var key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:d64(e.salt),iterations:100000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+    var buf=await crypto.subtle.decrypt({name:'AES-GCM',iv:d64(e.iv)},key,d64(e.ct));
+    return JSON.parse(new TextDecoder().decode(buf));
+  }
+  function go(){
+    var btn=document.getElementById('pwbtn'); btn.disabled=true; btn.textContent='Unlocking…';
+    document.getElementById('pwerr').textContent='';
+    unlock(document.getElementById('pw').value).then(function(data){
+      window.__PHS_DATA=data;
+      window.dispatchEvent(new CustomEvent('phs-unlocked',{detail:data}));
+      var ls=document.getElementById('lockscreen'); if(ls) ls.remove();
+    }).catch(function(){
+      document.getElementById('pwerr').textContent='Incorrect password. Please try again.';
+      btn.disabled=false; btn.textContent='View dashboard';
+    });
+  }
+  document.getElementById('pwbtn').addEventListener('click',go);
+  document.getElementById('pw').addEventListener('keydown',function(ev){if(ev.key==='Enter')go();});
+  document.getElementById('pw').focus();
+})();
+</script>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:#EFEBE2; }
+  .num{ font-variant-numeric:tabular-nums lining-nums; }
+  .rowhover:hover{ background:#F3EFE6 !important; }
+  .taprow{ cursor:pointer; }
+  ::selection{ background:#22314B; color:#fff; }
+  .note-pop{ display:none; }
+  .hasnote{ position:relative; }
+  .hasnote:hover .note-pop{ display:block; position:absolute; right:0; bottom:150%; width:232px; background:#22314B; color:#EFEBE2; font-size:11px; line-height:1.5; font-weight:400; font-style:normal; text-align:left; letter-spacing:normal; padding:9px 11px; border-radius:5px; box-shadow:0 6px 22px rgba(27,27,26,0.28); z-index:40; white-space:normal; }
+</style>
+</helmet>
+<div style="min-height:100vh; background:#EFEBE2; font-family:'Instrument Sans',sans-serif; color:#1B1B1A; padding-bottom:64px;">
+
+  <!-- Header -->
+  <header style="background:#fff; border-bottom:1px solid #E4DFD4;">
+    <div style="max-width:1360px; margin:0 auto; padding:20px 32px; display:flex; align-items:center; justify-content:space-between; gap:24px;">
+      <div style="display:flex; align-items:center; gap:18px;">
+        <img src="phs-logo.png" alt="Pierre Henry" style="height:48px; width:auto; display:block;" onerror="this.outerHTML='&lt;span style=&quot;font-family:Newsreader,serif;font-size:22px;color:#22314B;letter-spacing:0.05em;&quot;&gt;pierre henry&lt;/span&gt;'" />
+        <div style="width:1px; height:34px; background:#E4DFD4;"></div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <div style="font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#9A948A; font-weight:600;">Financial Close</div>
+          <div style="font-family:'Newsreader',serif; font-size:21px; line-height:1; color:#1B1B1A;">Month-End Report</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:28px;">
+        <div style="text-align:right;">
+          <div style="font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:#9A948A; font-weight:600;">Reporting Period</div>
+          <div style="font-family:'Newsreader',serif; font-size:19px; color:#22314B;">{{ periodLabel }}</div>
+        </div>
+        <div style="padding:8px 14px; border:1px solid #E4DFD4; border-radius:2px; background:#FBFAF6; text-align:right;">
+          <div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#9A948A; font-weight:600;">Status</div>
+          <div style="font-size:13px; color:#6B6760; font-weight:500;">Unaudited · Management</div>
+        </div>
+      </div>
+    </div>
+    <!-- Tabs -->
+    <div style="max-width:1360px; margin:0 auto; padding:0 32px; display:flex; gap:4px;">
+      <button onClick="{{ goOverview }}" style="{{ tabOverview }}">Overview</button>
+      <button onClick="{{ goPnl }}" style="{{ tabPnl }}">Income Statement</button>
+      <button onClick="{{ goCfs }}" style="{{ tabCfs }}">Cash Flow Statement</button>
+    </div>
+  </header>
+
+  <main style="max-width:1360px; margin:0 auto; padding:32px;">
+
+    <!-- ===================== OVERVIEW ===================== -->
+    <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+    <section data-screen-label="Overview">
+      <div style="margin-bottom:22px; display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div>
+          <h2 style="font-family:'Newsreader',serif; font-weight:500; font-size:26px; margin:0 0 4px; color:#1B1B1A;">Performance at a glance</h2>
+          <div style="font-size:12px; color:#9A948A;">{{ overviewSub }}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:#9A948A; font-weight:600;">Period</span>
+          <div style="display:inline-flex; gap:2px; background:#fff; border:1px solid #E4DFD4; border-radius:3px; padding:3px;">
+            <sc-for list="{{ periodOpts }}" as="p" hint-placeholder-count="7">
+              <button onClick="{{ p.onClick }}" style="{{ p.style }}">{{ p.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI grid -->
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px;">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="8">
+          <div style="background:#fff; border:1px solid #E4DFD4; border-radius:3px; padding:18px 20px; display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+              <div style="min-width:0;">
+                <div style="font-size:10.5px; letter-spacing:0.12em; text-transform:uppercase; color:#9A948A; font-weight:600; margin-bottom:8px; white-space:nowrap;">{{ k.label }}</div>
+                <div class="num" style="font-family:'Newsreader',serif; font-size:30px; line-height:1; color:#1B1B1A;">{{ k.value }}</div>
+                <div style="font-size:11.5px; color:#6B6760; margin-top:6px;">{{ k.sub }}</div>
+              </div>
+              <sc-if value="{{ showSpark }}" hint-placeholder-val="{{ true }}">
+                <svg width="80" height="34" viewBox="0 0 104 38" preserveAspectRatio="none" style="flex-shrink:0; overflow:visible;">
+                  <path d="{{ k.sparkArea }}" fill="#22314B" opacity="0.06"></path>
+                  <path d="{{ k.sparkLine }}" fill="none" stroke="#22314B" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"></path>
+                </svg>
+              </sc-if>
+            </div>
+            <div style="display:flex; gap:18px; padding-top:11px; border-top:1px solid #F0ECE2;">
+              <sc-for list="{{ k.deltas }}" as="dl" hint-placeholder-count="2">
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <span style="font-size:9.5px; letter-spacing:0.06em; text-transform:uppercase; color:#9A948A; font-weight:600;">{{ dl.label }}</span>
+                  <span class="num" style="{{ dl.style }}">{{ dl.txt }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Trend panels -->
+      <sc-if value="{{ showTrend }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div style="background:#fff; border:1px solid #E4DFD4; border-radius:3px; padding:22px 24px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px;">
+            <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; margin:0;">Revenue &amp; EBITDA margin</h3>
+            <div style="display:flex; gap:16px; font-size:11px; color:#6B6760;">
+              <span style="display:flex; align-items:center; gap:6px;"><span style="width:10px; height:10px; background:#22314B; border-radius:1px; display:inline-block;"></span>Revenue</span>
+              <span style="display:flex; align-items:center; gap:6px;"><span style="width:10px; height:2px; background:#7C2B31; display:inline-block;"></span>EBITDA %</span>
+            </div>
+          </div>
+          <div style="display:flex; align-items:flex-end; gap:12px; height:180px;">
+            <sc-for list="{{ trendBars }}" as="b" hint-placeholder-count="6">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; justify-content:flex-end;">
+                <span class="num" style="font-size:12px; color:#22314B; font-weight:600;">{{ b.top }}</span>
+                <div style="width:100%; border-radius:2px 2px 0 0; height:{{ b.h }}; background:{{ b.fill }};"></div>
+                <div style="width:100%; text-align:center; border-top:1px solid #E4DFD4; padding-top:6px;">
+                  <div style="font-size:12px; color:{{ b.labelColor }}; font-weight:{{ b.labelWeight }};">{{ b.month }}</div>
+                  <div class="num" style="font-size:11px; color:#7C2B31; font-weight:600; margin-top:2px;">{{ b.margin }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#fff; border:1px solid #E4DFD4; border-radius:3px; padding:22px 24px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px;">
+            <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; margin:0;">ACOS · Amazon ad efficiency</h3>
+            <span style="font-size:11px; color:#6B6760; font-style:italic;">Lower is better</span>
+          </div>
+          <div style="display:flex; align-items:flex-end; gap:12px; height:180px;">
+            <sc-for list="{{ acosBars }}" as="b" hint-placeholder-count="6">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; justify-content:flex-end;">
+                <span class="num" style="font-size:12px; color:#7C2B31; font-weight:600;">{{ b.top }}</span>
+                <div style="width:100%; border-radius:2px 2px 0 0; height:{{ b.h }}; background:{{ b.fill }};"></div>
+                <div style="width:100%; text-align:center; border-top:1px solid #E4DFD4; padding-top:6px;">
+                  <div style="font-size:12px; color:{{ b.labelColor }}; font-weight:{{ b.labelWeight }};">{{ b.month }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+        <div style="background:#fff; border:1px solid #E4DFD4; border-radius:3px; padding:22px 24px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px;">
+            <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; margin:0;">Units sold by month</h3>
+            <span style="font-size:11px; color:#6B6760; font-style:italic;">Packs shipped</span>
+          </div>
+          <div style="display:flex; align-items:flex-end; gap:12px; height:180px;">
+            <sc-for list="{{ unitsBars }}" as="b" hint-placeholder-count="6">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; justify-content:flex-end;">
+                <span class="num" style="font-size:12px; color:#22314B; font-weight:600;">{{ b.top }}</span>
+                <div style="width:100%; border-radius:2px 2px 0 0; height:{{ b.h }}; background:{{ b.fill }};"></div>
+                <div style="width:100%; text-align:center; border-top:1px solid #E4DFD4; padding-top:6px;">
+                  <div style="font-size:12px; color:{{ b.labelColor }}; font-weight:{{ b.labelWeight }};">{{ b.month }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #E4DFD4; border-radius:3px; padding:22px 24px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px;">
+            <h3 style="font-family:'Newsreader',serif; font-weight:500; font-size:18px; margin:0;">Contribution margin over time</h3>
+            <span style="font-size:11px; color:#6B6760; font-style:italic;">$ &amp; % of revenue</span>
+          </div>
+          <div style="display:flex; align-items:flex-end; gap:12px; height:180px;">
+            <sc-for list="{{ cmBars }}" as="b" hint-placeholder-count="6">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; justify-content:flex-end;">
+                <span class="num" style="font-size:12px; color:#2F6B4F; font-weight:600;">{{ b.top }}</span>
+                <div style="width:100%; border-radius:2px 2px 0 0; height:{{ b.h }}; background:{{ b.fill }};"></div>
+                <div style="width:100%; text-align:center; border-top:1px solid #E4DFD4; padding-top:6px;">
+                  <div style="font-size:12px; color:{{ b.labelColor }}; font-weight:{{ b.labelWeight }};">{{ b.month }}</div>
+                  <div class="num" style="font-size:11px; color:#2F6B4F; font-weight:600; margin-top:2px;">{{ b.margin }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </section>
+    </sc-if>
+
+    <!-- ===================== STATEMENT (P&L / CFS) ===================== -->
+    <sc-if value="{{ isStatement }}" hint-placeholder-val="{{ true }}">
+    <section data-screen-label="Statement">
+      <div style="margin-bottom:18px; display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div>
+          <h2 style="font-family:'Newsreader',serif; font-weight:500; font-size:26px; margin:0 0 4px; color:#1B1B1A;">{{ stmtTitle }}</h2>
+          <div style="font-size:12px; color:#9A948A;">{{ stmtNote }}</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ isCfs }}" hint-placeholder-val="{{ true }}">
+      <div style="background:#FBFAF6; border:1px solid #E4DFD4; border-left:3px solid #B8955C; border-radius:4px; padding:11px 15px; margin-bottom:16px; font-size:12px; line-height:1.55; color:#4A4640;">
+        <b style="color:#22314B;">Actual cash.</b> The real money in and out of your Bank of America account each month — Amazon &amp; Shopify payouts coming in; card payments, payroll, contractors, supplier / import wires, and loan payments going out. The <b style="color:#22314B;">Net Change in Cash</b> equals exactly how much your bank balance moved.
+      </div>
+      </sc-if>
+
+      <div style="background:#fff; border:1px solid #E4DFD4; border-radius:3px; overflow:hidden;">
+        <div style="{{ headGrid }}">
+          <div style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; font-weight:600; color:#9DB0CE;">Line item</div>
+          <sc-for list="{{ colHeads }}" as="h" hint-placeholder-count="8">
+            <div class="num" style="text-align:right; font-size:12px; font-weight:600; letter-spacing:0.04em; color:#EFEBE2;">{{ h }}</div>
+          </sc-for>
+        </div>
+        <sc-for list="{{ stmtRows }}" as="r" hint-placeholder-count="16">
+          <div class="{{ r.cls }}" onClick="{{ r.onClick }}" style="{{ r.style }}">
+            <div style="{{ r.labelStyle }}"><span style="display:inline-block; width:14px; color:#B8955C;">{{ r.chevron }}</span>{{ r.label }}</div>
+            <sc-for list="{{ r.cells }}" as="c">
+              <div class="num" style="{{ c.style }}"><span class="{{ c.cls }}" style="{{ c.vstyle }}">{{ c.v }}<span class="note-pop">{{ c.note }}</span></span></div>
+            </sc-for>
+            <div class="num" style="{{ r.ytdStyle }}">{{ r.ytd }}</div>
+            <div class="num" style="{{ r.yoyStyle }}">{{ r.yoy }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="font-size:11px; color:#9A948A; margin-top:12px; display:flex; justify-content:space-between;">
+        <span>{{ unitNote }} · Sourced from the audited month-end close model.</span>
+        <span>Click a bold line to expand its components.</span>
+      </div>
+    </section>
+    </sc-if>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:980},&quot;unitScale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;thousands&quot;,&quot;full&quot;],&quot;default&quot;:&quot;thousands&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;showTrend&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;showSparklines&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;}}">
+class Component extends DCLogic {
+  state = { tab:'overview', period:5, exp:{ rev:true, adj:false, cogs:false, chan:true, opex:true, comp:false, itsw:false, logi:false, tande:false, admin:false }, cfView:'direct', data:null };
+
+  months = ['Jan','Feb','Mar','Apr','May','Jun'];
+  monthsFull = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  componentDidMount(){
+    const self=this;
+    const apply=d=>{ if(d&&d.current&&d.current.rev){ self._b=null; self._x=null; self.setState({data:d, period:d.current.rev.length-1}); } };
+    if(window.__PHS_DATA) apply(window.__PHS_DATA);
+    else window.addEventListener('phs-unlocked', e=>apply(e.detail));
+  }
+
+  statement(rev, fs){
+    const map = f => rev.map((r,i)=>Math.round(f(r,i)));
+    const dtcS=[.70,.69,.67,.68,.66,.68], whS=[.18,.19,.21,.20,.22,.20];
+    const dtc=map((r,i)=>r*dtcS[i]);
+    const wholesale=map((r,i)=>r*whS[i]);
+    const marketplace=rev.map((r,i)=>r-dtc[i]-wholesale[i]);
+    const materials=map((r,i)=>r*[.235,.24,.238,.242,.236,.233][i]);
+    const mfg=map(r=>r*.12);
+    const freight=map((r,i)=>r*[.058,.06,.062,.059,.057,.056][i]);
+    const cogs=materials.map((m,i)=>m+mfg[i]+freight[i]);
+    const gp=rev.map((r,i)=>r-cogs[i]);
+    const marketing=map((r,i)=>r*[.19,.185,.20,.175,.185,.18][i]);
+    const fulfillment=map(r=>r*.08);
+    const payroll=[42000,42000,44000,44000,46000,46000].map(x=>Math.round(x*fs));
+    const ga=[12000,12500,12000,13000,12800,13200].map(x=>Math.round(x*fs));
+    const software=[4200,4200,4400,4400,4600,4600].map(x=>Math.round(x*fs));
+    const opex=marketing.map((m,i)=>m+fulfillment[i]+payroll[i]+ga[i]+software[i]);
+    const ebitda=gp.map((g,i)=>g-opex[i]);
+    const da=rev.map(()=>Math.round(3500*fs));
+    const interest=rev.map(()=>Math.round(1800*fs));
+    const pretax=ebitda.map((e,i)=>e-da[i]-interest[i]);
+    const tax=pretax.map(p=>Math.max(0,Math.round(p*0.25)));
+    const net=pretax.map((p,i)=>p-tax[i]);
+    return {rev,dtc,wholesale,marketplace,materials,mfg,freight,cogs,gp,marketing,fulfillment,payroll,ga,software,opex,ebitda,da,interest,tax,net};
+  }
+
+  cashflow(d){
+    const dAR=[-8000,-4000,-12000,3000,-9000,-6000];
+    const dInv=[-15000,-6000,-20000,-8000,-18000,-10000];
+    const dAP=[10000,5000,14000,-3000,9000,7000];
+    const opCF=d.net.map((v,i)=>v+d.da[i]+dAR[i]+dInv[i]+dAP[i]);
+    const capex=[0,-25000,0,0,-15000,-8000];
+    const invCF=capex.slice();
+    const debt=[-6000,-6000,-6000,-6000,-6000,-6000];
+    const draws=[0,0,-30000,0,0,-40000];
+    const finCF=debt.map((v,i)=>v+draws[i]);
+    const net=opCF.map((v,i)=>v+invCF[i]+finCF[i]);
+    const begin=[]; const end=[]; let bal=420000;
+    for(let i=0;i<6;i++){ begin[i]=bal; bal+=net[i]; end[i]=bal; }
+    return {dAR,dInv,dAP,opCF,capex,invCF,debt,draws,finCF,net,begin,end};
+  }
+
+  // derive full statement subtotals from raw monthly inputs (from phs-data.json)
+  fromRaw(o){
+    const cogs=o.materials.map((m,i)=>m+o.mfg[i]+o.freight[i]);
+    const gp=o.rev.map((r,i)=>r-cogs[i]);
+    const opex=o.marketing.map((m,i)=>m+o.fulfillment[i]+o.payroll[i]+o.ga[i]+o.software[i]);
+    const ebitda=gp.map((g,i)=>g-opex[i]);
+    const net=ebitda.map((e,i)=>e-o.da[i]-o.interest[i]-o.tax[i]);
+    return {...o,cogs,gp,opex,ebitda,net};
+  }
+  cashflowRaw(d,c){
+    const dAR=c.changeInAR, dInv=c.changeInInventory, dAP=c.changeInAP;
+    const opCF=d.net.map((v,i)=>v+d.da[i]+dAR[i]+dInv[i]+dAP[i]);
+    const capex=c.capex, invCF=capex.slice();
+    const debt=c.debtRepayment, draws=c.ownerDistributions;
+    const finCF=debt.map((v,i)=>v+draws[i]);
+    const net=opCF.map((v,i)=>v+invCF[i]+finCF[i]);
+    const begin=[], end=[]; let bal=c.beginningCash;
+    for(let i=0;i<net.length;i++){ begin[i]=bal; bal+=net[i]; end[i]=bal; }
+    return {dAR,dInv,dAP,opCF,capex,invCF,debt,draws,finCF,net,begin,end};
+  }
+
+  build(){
+    if(this._b) return this._b;
+    const data=this.state.data;
+    if(data){
+      const d=this.fromRaw(data.current), ly=this.fromRaw(data.prior);
+      this._b={d,ly,cf:this.cashflowRaw(d,data.cashflow)};
+      return this._b;
+    }
+    const d = this.statement([285000,262000,310000,298000,335000,352000],1);
+    const ly = this.statement([240000,228000,268000,255000,285000,300000],0.9);
+    const cf = this.cashflow(d);
+    this._b = {d,ly,cf};
+    return this._b;
+  }
+
+  // ---- placeholder operating metrics (to be replaced by real data) ----
+  extra(){
+    if(this._x) return this._x;
+    const {d,ly}=this.build();
+    if(this.state.data){
+      const o=this.state.data.operating;
+      this._x={ aov:o.aov, aovLy:o.aovPrior, units:o.unitsSold, unitsLy:o.unitsSoldPrior,
+        pairs:o.pairsSold, pairsLy:o.pairsSoldPrior,
+        acos:o.acos, acosLy:o.acosPrior, cm:o.contributionMargin, cmLy:o.contributionMarginPrior };
+      return this._x;
+    }
+    const aov=[50,51,51,52,52,53];
+    const aovLy=[47,48,48,49,49,50];
+    const consumer=d.dtc.map((v,i)=>v+d.marketplace[i]);
+    const consumerLy=ly.dtc.map((v,i)=>v+ly.marketplace[i]);
+    const orders=consumer.map((v,i)=>Math.round(v/aov[i]));
+    const ordersLy=consumerLy.map((v,i)=>Math.round(v/aovLy[i]));
+    const units=orders.map(o=>Math.round(o*2.6));
+    const unitsLy=ordersLy.map(o=>Math.round(o*2.6));
+    const pairs=units.map(u=>u*3);
+    const pairsLy=unitsLy.map(u=>u*3);
+    const acos=[16.8,17.5,15.9,16.2,14.8,13.9];
+    const acosLy=[19.2,19.8,18.4,18.0,17.1,16.3];
+    const cm=d.gp.map((v,i)=>v-d.fulfillment[i]-d.marketing[i]);
+    const cmLy=ly.gp.map((v,i)=>v-ly.fulfillment[i]-ly.marketing[i]);
+    this._x={aov,aovLy,orders,ordersLy,units,unitsLy,pairs,pairsLy,acos,acosLy,cm,cmLy};
+    return this._x;
+  }
+
+  full(){ const meta=(this.state.data&&this.state.data.meta)||{}; return (meta.unitScale||this.props.unitScale||'thousands')==='full'; }
+  fmt(v){
+    if(v==null||isNaN(v)) return 'n/a';
+    if(this.full()) return (v<0?'(':'')+'$'+Math.abs(Math.round(v)).toLocaleString('en-US')+(v<0?')':'');
+    const t=v/1000; const s=Math.abs(t).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1});
+    return v<0 ? '('+s+')' : s;
+  }
+  pct(v){ return (v==null||isNaN(v))?'':v.toFixed(1)+'%'; }
+  yoyStr(a,b){ if(!b) return '—'; const p=(a-b)/Math.abs(b)*100; return (p>=0?'+':'')+p.toFixed(1)+'%'; }
+  sum(a){ return a.reduce((x,y)=>x+(y==null?0:y),0); }
+  avg(a){ const f=a.filter(v=>v!=null); return f.length?this.sum(f)/f.length:null; }
+
+  spark(series){
+    const w=104,h=38,pad=4;
+    const _fs=series.filter(v=>v!=null); const min=Math.min(..._fs), max=Math.max(..._fs);
+    const rng=(max-min)||1;
+    const pts=series.map((v,i)=>{
+      const x=(i/(series.length-1))*w;
+      const _v=(v==null?min:v);
+      const y=pad+(1-(_v-min)/rng)*(h-2*pad);
+      return [x,y];
+    });
+    const line='M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L');
+    const area=line+` L${w} ${h} L0 ${h} Z`;
+    return {line,area};
+  }
+
+  M(){ return (this.state.data&&this.state.data.meta&&this.state.data.meta.months)||this.months; }
+  lastIdx(){ return this.M().length-1; }
+  gridTpl(extra){ const n=this.M().length; return 'display:grid; grid-template-columns:250px repeat('+(n+2)+',1fr); align-items:center; padding:0 24px;'+(extra||''); }
+
+  goTo(t){ return ()=>this.setState({tab:t}); }
+  setPeriod(v){ return ()=>this.setState({period:v}); }
+  setCfView(v){ return ()=>this.setState({cfView:v}); }
+  toggle(g){ return ()=>this.setState(s=>({exp:{...s.exp,[g]:!s.exp[g]}})); }
+
+  tabStyle(active){
+    const base='font-family:Instrument Sans,sans-serif; font-size:14px; font-weight:600; padding:11px 26px; cursor:pointer; border-radius:8px 8px 0 0; margin-bottom:-1px; transition:all .12s;';
+    return active
+      ? base+' color:#fff; background:#22314B; border:1px solid #22314B; border-bottom:1px solid #22314B;'
+      : base+' color:#6B6760; background:#F5F1E8; border:1px solid #E4DFD4; border-bottom:1px solid #E4DFD4;';
+  }
+  pillStyle(active){
+    const base='font-family:Instrument Sans,sans-serif; font-size:12.5px; font-weight:600; padding:6px 12px; border:none; cursor:pointer; border-radius:2px;';
+    return active ? base+' background:#22314B; color:#fff;' : base+' background:none; color:#8A857C;';
+  }
+
+  // ================= KPI CARDS =================
+  kpiCards(){
+    const {d,ly}=this.build();
+    const x=this.extra();
+    const M=this.M();
+    const period=this.state.period;
+    const isYtd = period==='ytd';
+    const j = isYtd?this.lastIdx():period;
+
+    const money=v=>(v<0?'-$':'$')+Math.abs(Math.round(v)).toLocaleString('en-US');
+
+    const cfgs=[
+      {label:'Revenue', kind:'money', cur:d.rev, ly:ly.rev, sub:'Net sales'},
+      {label:'Gross Margin', kind:'pct', num:d.gp, den:d.rev, lyNum:ly.gp, lyDen:ly.rev, sub:'of revenue'},
+      {label:'Contribution Margin', kind:'pct', num:x.cm, den:d.rev, lyNum:x.cmLy, lyDen:ly.rev, subMoney:x.cm},
+      {label:'EBITDA', kind:'money', cur:d.ebitda, ly:ly.ebitda, subPctOf:d.rev},
+      {label:'Units Sold', kind:'count', cur:x.units, ly:x.unitsLy, sub:'Orders · packs'},
+      {label:'Pairs Sold', kind:'count', cur:x.pairs, ly:x.pairsLy, sub:'Individual pairs'},
+      {label:'Avg. Order Value', kind:'aov', cur:x.aov, ly:x.aovLy, sub:'Per DTC order'},
+      {label:'ACOS', kind:'pctDirect', cur:x.acos, ly:x.acosLy, lowerBetter:true, sub:'Ad spend / ad sales'}
+    ];
+
+    const build=(cfg)=>{
+      let curVal, series, prevVal=null, lyVal;
+      if(cfg.kind==='pct'){
+        series=cfg.num.map((n,i)=>n/cfg.den[i]*100);
+        const lyS=cfg.lyNum.map((n,i)=>n/cfg.lyDen[i]*100);
+        curVal = isYtd ? this.sum(cfg.num)/this.sum(cfg.den)*100 : series[j];
+        if(!isYtd && j>0) prevVal=series[j-1];
+        lyVal = isYtd ? this.sum(cfg.lyNum)/this.sum(cfg.lyDen)*100 : lyS[j];
+      } else if(cfg.kind==='pctDirect'){
+        series=cfg.cur;
+        const _av=a=>{const f=a.filter(v=>v!=null); return f.length?f.reduce((x,y)=>x+y,0)/f.length:null;};
+        curVal = isYtd ? _av(cfg.cur) : cfg.cur[j];
+        if(!isYtd && j>0) prevVal=cfg.cur[j-1];
+        lyVal = isYtd ? _av(cfg.ly) : cfg.ly[j];
+      } else {
+        series=cfg.cur;
+        if(cfg.kind==='aov'){
+          curVal = isYtd ? Math.round(this.avg(cfg.cur)) : cfg.cur[j];
+          lyVal = isYtd ? Math.round(this.avg(cfg.ly)) : cfg.ly[j];
+        } else {
+          curVal = isYtd ? this.sum(cfg.cur) : cfg.cur[j];
+          lyVal = isYtd ? this.sum(cfg.ly) : cfg.ly[j];
+        }
+        if(!isYtd && j>0) prevVal=cfg.cur[j-1];
+      }
+
+      const isPct = cfg.kind==='pct'||cfg.kind==='pctDirect';
+      let valStr;
+      if(isPct) valStr=(curVal==null||isNaN(curVal))?'n/a':curVal.toFixed(1)+'%';
+      else if(cfg.kind==='count') valStr=Math.round(curVal).toLocaleString('en-US');
+      else if(cfg.kind==='aov') valStr=(curVal==null||isNaN(curVal))?'n/a':'$'+Math.round(curVal);
+      else valStr=money(curVal);
+
+      const mk=(ref,label)=>{
+        if(ref==null||curVal==null) return null;
+        const diff=curVal-ref;
+        let good = cfg.lowerBetter ? diff<0 : diff>0;
+        if(Math.abs(diff)<1e-9) good=true;
+        const arrow = diff>0.001?'▲ ':(diff<-0.001?'▼ ':'– ');
+        const txt = isPct ? (diff>=0?'+':'')+diff.toFixed(1)+' pts'
+                          : (diff>=0?'+':'')+(diff/Math.abs(ref)*100).toFixed(1)+'%';
+        const col = Math.abs(diff)<1e-9 ? '#9A948A' : (good?'#2F6B4F':'#A23B34');
+        return {label, txt:arrow+txt, style:'font-size:14px; font-weight:600; color:'+col+';'};
+      };
+
+      const deltas=[];
+      if(isYtd){
+        const dy=mk(lyVal,'vs FY25 YTD'); if(dy) deltas.push(dy);
+      } else {
+        const dm=mk(prevVal, j>0?('vs '+M[j-1]):'vs prior mo'); if(dm) deltas.push(dm);
+        const dy=mk(lyVal,'vs '+M[j]+" '25"); if(dy) deltas.push(dy);
+      }
+
+      let sub=cfg.sub||'';
+      if(cfg.subMoney) sub = money(isYtd? this.sum(cfg.subMoney): cfg.subMoney[j])+' contribution';
+      if(cfg.subPctOf){ const m = isYtd ? this.sum(cfg.cur)/this.sum(cfg.subPctOf)*100 : cfg.cur[j]/cfg.subPctOf[j]*100; sub=m.toFixed(1)+'% margin'; }
+
+      const sp=this.spark(series);
+      return {label:cfg.label, value:valStr, sub, sparkLine:sp.line, sparkArea:sp.area, deltas};
+    };
+
+    return cfgs.map(build);
+  }
+
+  // ================= TREND PANELS =================
+  trend(){
+    const {d}=this.build();
+    const MM=this.M();
+    const sel = this.state.period==='ytd' ? -1 : this.state.period;
+    const max=Math.max(...d.rev);
+    return d.rev.map((v,i)=>{
+      const on = i===sel;
+      return {
+        month:MM[i],
+        top:'$'+Math.round(v).toLocaleString('en-US'),
+        h:(v/max*140).toFixed(0)+'px',
+        margin:(d.ebitda[i]/v*100).toFixed(1)+'%',
+        fill: on ? 'linear-gradient(180deg,#C7A96A,#B8955C)' : 'linear-gradient(180deg,#2E3E5C,#22314B)',
+        labelColor: on ? '#B8955C' : '#1B1B1A',
+        labelWeight: on ? '700' : '600'
+      };
+    });
+  }
+  acosTrend(){
+    const x=this.extra();
+    const MM=this.M();
+    const sel = this.state.period==='ytd' ? -1 : this.state.period;
+    const _fa=x.acos.filter(v=>v!=null); const max=_fa.length?Math.max(..._fa):1;
+    return x.acos.map((v,i)=>{
+      const on = i===sel; const na=(v==null);
+      return {
+        month:MM[i],
+        top:na?'n/a':v.toFixed(1)+'%',
+        h:na?'2px':(v/max*140).toFixed(0)+'px',
+        fill: on ? 'linear-gradient(180deg,#C7A96A,#B8955C)' : 'linear-gradient(180deg,#9A4A4F,#7C2B31)',
+        labelColor: on ? '#B8955C' : '#1B1B1A',
+        labelWeight: on ? '700' : '600'
+      };
+    });
+  }
+
+  unitsTrend(){
+    const x=this.extra(); const MM=this.M();
+    const sel=this.state.period==='ytd'?-1:this.state.period;
+    const max=Math.max(...x.units)||1;
+    return x.units.map((v,i)=>{ const on=i===sel; return {
+      month:MM[i], top:Math.round(v).toLocaleString('en-US'),
+      h:(v/max*140).toFixed(0)+'px',
+      fill: on?'linear-gradient(180deg,#C7A96A,#B8955C)':'linear-gradient(180deg,#2E3E5C,#22314B)',
+      labelColor: on?'#B8955C':'#1B1B1A', labelWeight: on?'700':'600'
+    };});
+  }
+  cmTrend(){
+    const x=this.extra(); const {d}=this.build(); const MM=this.M();
+    const sel=this.state.period==='ytd'?-1:this.state.period;
+    const max=Math.max(...x.cm.map(v=>Math.abs(v)))||1;
+    return x.cm.map((v,i)=>{ const on=i===sel; const m=d.rev[i]?(v/d.rev[i]*100):0; return {
+      month:MM[i], top:'$'+Math.round(v).toLocaleString('en-US'),
+      h:(Math.abs(v)/max*140).toFixed(0)+'px', margin:m.toFixed(1)+'%',
+      fill: on?'linear-gradient(180deg,#C7A96A,#B8955C)':'linear-gradient(180deg,#3E6E52,#2E5540)',
+      labelColor: on?'#B8955C':'#1B1B1A', labelWeight: on?'700':'600'
+    };});
+  }
+
+  // ================= STATEMENT TABLES =================
+  rowStyle(type){
+    const grid=this.gridTpl();
+    if(type==='group')    return grid+' height:42px; background:#FBFAF6; border-top:1px solid #EAE4D8;';
+    if(type==='detail')   return grid+' height:34px;';
+    if(type==='strong')   return grid+' height:44px; border-top:1px solid #22314B;';
+    if(type==='total')    return grid+' height:52px; background:#F5F1E8; border-top:2px solid #22314B;';
+    if(type==='margin')   return grid+' height:30px;';
+    if(type==='section')  return grid+' height:40px; background:#22314B0D;';
+    return grid+' height:38px;';
+  }
+  labelStyle(type,indent){
+    let s='display:flex; align-items:center; ';
+    const pl = indent?('padding-left:'+(indent*22)+'px;'):'';
+    if(type==='group')   return s+pl+'font-size:14px; font-weight:600; color:#1B1B1A;';
+    if(type==='detail')  return s+pl+'font-size:13px; color:#3A3833; font-weight:400;';
+    if(type==='strong')  return s+pl+'font-size:14px; font-weight:700; color:#22314B;';
+    if(type==='total')   return s+pl+"font-family:'Newsreader',serif; font-size:18px; font-weight:600; color:#22314B;";
+    if(type==='margin')  return s+pl+'font-size:12px; font-style:italic; color:#6B6760; font-weight:400;';
+    if(type==='section') return s+pl+'font-size:11px; letter-spacing:0.12em; text-transform:uppercase; font-weight:600; color:#22314B;';
+    return s+pl+'font-size:13px; color:#3A3833; font-weight:400;';
+  }
+  cellStyle(type){
+    let s='text-align:right; ';
+    if(type==='group')  return s+'font-size:13px; font-weight:600; color:#1B1B1A;';
+    if(type==='detail') return s+'font-size:12.5px; color:#3A3833;';
+    if(type==='strong') return s+'font-size:13px; font-weight:700; color:#22314B;';
+    if(type==='total')  return s+'font-size:15px; font-weight:700; color:#22314B;';
+    if(type==='margin') return s+'font-size:12px; font-style:italic; color:#6B6760;';
+    if(type==='section')return s;
+    return s+'font-size:13px; color:#3A3833;';
+  }
+  yoyCell(type,txt){
+    const green = txt&&txt[0]==='+';
+    const col = txt==='—'||!txt ? '#C4BEB2' : (green?'#2F6B4F':'#A23B34');
+    let base='text-align:right; font-size:12px; font-weight:600; color:'+col+';';
+    if(type==='margin') base='text-align:right; font-size:11px; font-style:italic; color:'+col+';';
+    return base;
+  }
+  mkRow(o){
+    const base=this.cellStyle(o.type);
+    const gstyle=v=>{ const g='text-align:right; font-size:12px; font-weight:600; '; if(v==null||isNaN(v)) return g+'color:#C4BEB2;'; return g+'color:'+(v>0.05?'#2F6B4F':(v<-0.05?'#A23B34':'#9A948A'))+';'; };
+    const plain=vv=>({v:vv, style:base, cls:'', vstyle:'', note:''});
+    let cells, ytd;
+    if(o.growth){
+      cells=o.vals.map(v=>({v:this.pct(v), style:gstyle(v), cls:'', vstyle:'', note:''})); ytd='';
+    } else if(o.pct){
+      cells=o.vals.map(v=>plain(this.pct(v))); ytd=o.ytdVal!=null?this.pct(o.ytdVal):'';
+    } else if(o.type==='section'){
+      cells=['','','','','',''].map(()=>plain('')); ytd='';
+    } else {
+      cells=o.vals.map((v,i)=>{ const note=(o.ann&&o.ann[i])||''; return {v:this.fmt(v), style:base, cls:note?'hasnote':'', vstyle:note?'position:relative; padding-bottom:1px; border-bottom:1px dashed #B8955C; cursor:help;':'', note}; });
+      ytd=o.ytdVal!=null?this.fmt(o.ytdVal):this.fmt(this.sum(o.vals));
+    }
+    const yoy=o.yoy||'—';
+    return {
+      type:o.type, label:o.label,
+      chevron: o.group ? (this.state.exp[o.group]?'▾':'▸') : '',
+      cls: 'rowhover'+(o.group?' taprow':''),
+      onClick: o.group ? this.toggle(o.group) : null,
+      style: this.rowStyle(o.type),
+      labelStyle: this.labelStyle(o.type,o.indent||0),
+      ytdStyle: this.cellStyle(o.type),
+      yoyStyle: this.yoyCell(o.type, (o.pct||o.growth)?'—':yoy),
+      cells, ytd, yoy: (o.pct||o.growth)? (o.yoy||'—') : yoy
+    };
+  }
+  pnlRows(){
+    if(!this.state.data||!this.state.data.isDetail) return [];
+    const D=this.state.data.isDetail; const e=this.state.exp; const R=[];
+    const A=k=>D[k].cur, P=k=>D[k].pri;
+    const yk=k=>this.yoyStr(this.sum(D[k].cur),this.sum(D[k].pri));
+    const nrev=A('netRevenue');
+    const pctOf=a=>a.map((v,i)=> nrev[i]? v/nrev[i]*100 : 0);
+    const mom=a=>a.map((v,i)=> i===0? null : (a[i-1]? (v/a[i-1]-1)*100 : null));
+    const yoyM=(c,p)=>c.map((v,i)=> p[i]? (v/p[i]-1)*100 : null);
+    const g=o=>R.push(this.mkRow(o));
+    // REVENUE
+    g({label:'Gross Revenue',type:'group',group:'rev',vals:A('grossTotal'),yoy:yk('grossTotal')});
+    if(e.rev){
+      g({label:'Marketplace (Amazon)',type:'detail',indent:1,vals:A('amazonGross'),yoy:yk('amazonGross')});
+      g({label:'DTC (Shopify)',type:'detail',indent:1,vals:A('shopifyGross'),yoy:yk('shopifyGross')});
+    }
+    g({label:'Returns & Adjustments',type:'group',group:'adj',vals:A('adjTotal')});
+    if(e.adj){
+      g({label:'Amazon returns',type:'detail',indent:1,vals:A('amazonReturns')});
+      g({label:'Amazon promos',type:'detail',indent:1,vals:A('amazonPromos')});
+      g({label:'Shopify returns',type:'detail',indent:1,vals:A('shopifyReturns')});
+      g({label:'Shopify promos',type:'detail',indent:1,vals:A('shopifyPromos')});
+      g({label:'Other',type:'detail',indent:1,vals:A('otherAdj')});
+    }
+    g({label:'Net Revenue',type:'strong',vals:nrev,yoy:yk('netRevenue')});
+    g({label:'vs. prior month',type:'margin',growth:true,vals:mom(nrev)});
+    g({label:'vs. prior year',type:'margin',growth:true,vals:yoyM(A('netRevenue'),P('netRevenue'))});
+    // COGS
+    g({label:'Cost of Goods Sold',type:'group',group:'cogs',vals:A('totalCogs'),yoy:yk('totalCogs')});
+    if(e.cogs){
+      g({label:'Amazon — product',type:'detail',indent:1,vals:A('amazonProductCogs')});
+      g({label:'Amazon — freight',type:'detail',indent:1,vals:A('amazonFreightCogs')});
+      g({label:'Shopify — product',type:'detail',indent:1,vals:A('shopifyProductCogs')});
+      g({label:'Shopify — freight',type:'detail',indent:1,vals:A('shopifyFreightCogs')});
+    }
+    g({label:'Gross Profit',type:'strong',vals:A('grossProfit'),yoy:yk('grossProfit')});
+    g({label:'Gross margin',type:'margin',pct:true,vals:pctOf(A('grossProfit'))});
+    // CHANNEL / SELLING
+    g({label:'Channel & Selling Expenses',type:'group',group:'chan',vals:A('totalChannel'),yoy:yk('totalChannel')});
+    if(e.chan){
+      g({label:'Amazon selling fee',type:'detail',indent:1,vals:A('amazonSellingFee')});
+      g({label:'Amazon FBA',type:'detail',indent:1,vals:A('amazonFBA')});
+      g({label:'Amazon marketing (ads)',type:'detail',indent:1,vals:A('amazonMarketing')});
+      g({label:'Shopify selling fee',type:'detail',indent:1,vals:A('shopifySellingFee')});
+      g({label:'Shopify FBA / MCF',type:'detail',indent:1,vals:A('shopifyFBA')});
+      g({label:'Google / social ads',type:'detail',indent:1,vals:A('googleSocial')});
+      g({label:'Other channel & selling',type:'detail',indent:1,vals:A('otherChannel')});
+    }
+    g({label:'Contribution Margin',type:'strong',vals:A('contributionMargin'),yoy:yk('contributionMargin')});
+    g({label:'Contribution margin',type:'margin',pct:true,vals:pctOf(A('contributionMargin'))});
+    // OPERATING EXPENSES
+    g({label:'Operating Expenses',type:'group',group:'opex',vals:A('opexTotal'),yoy:yk('opexTotal')});
+    if(e.opex){
+      g({label:'Compensation',type:'detail',indent:1,group:'comp',vals:A('compTotal')});
+      if(e.comp){
+        g({label:'General Manager salary',type:'detail',indent:2,vals:A('gmSalary')});
+        g({label:'Admin assistant / intern',type:'detail',indent:2,vals:A('adminIntern')});
+        g({label:'Other salary & benefits',type:'detail',indent:2,vals:A('otherComp')});
+      }
+      g({label:'Contractors',type:'detail',indent:1,vals:A('contractorsTotal')});
+      g({label:'IT & Software',type:'detail',indent:1,group:'itsw',vals:A('itTotal')});
+      if(e.itsw){
+        g({label:'Airtable',type:'detail',indent:2,vals:A('airtable')});
+        g({label:'Omnisend / Klaviyo',type:'detail',indent:2,vals:A('omnisend')});
+        g({label:'Google Suite',type:'detail',indent:2,vals:A('googleSuite')});
+        g({label:'TaxJar',type:'detail',indent:2,vals:A('taxjar')});
+        g({label:'Shopify apps',type:'detail',indent:2,vals:A('shopifyApps')});
+        g({label:'Other IT',type:'detail',indent:2,vals:A('itOther')});
+        g({label:'Other subscriptions',type:'detail',indent:2,vals:A('otherIT')});
+      }
+      g({label:'Logistics & Warehousing',type:'detail',indent:1,group:'logi',vals:A('logisticsTotal')});
+      if(e.logi){
+        g({label:'Saltbox storage',type:'detail',indent:2,vals:A('saltbox')});
+        g({label:'Amazon storage',type:'detail',indent:2,vals:A('amazonStorage')});
+        g({label:'Amazon service fees',type:'detail',indent:2,vals:A('amazonService')});
+        g({label:'Amazon return fees',type:'detail',indent:2,vals:A('amazonReturnFees')});
+        g({label:'Other operations',type:'detail',indent:2,vals:A('otherOps'),ann:(this.state.data.annotations&&this.state.data.annotations.otherOps)||[]});
+      }
+      g({label:'Travel & Entertainment',type:'detail',indent:1,group:'tande',vals:A('travelTotal')});
+      if(e.tande){
+        g({label:'Travel',type:'detail',indent:2,vals:A('travel')});
+        g({label:'Meals',type:'detail',indent:2,vals:A('meals')});
+      }
+      g({label:'Admin & Bank',type:'detail',indent:1,group:'admin',vals:A('adminTotal')});
+      if(e.admin){
+        g({label:'Bank fees',type:'detail',indent:2,vals:A('bankFees')});
+        g({label:'Credit card fees',type:'detail',indent:2,vals:A('ccFees')});
+        g({label:'Other fees & memberships',type:'detail',indent:2,vals:A('adminOther')});
+      }
+    }
+    g({label:'Operating Income / EBITDA',type:'strong',vals:A('ebitda'),yoy:yk('ebitda')});
+    g({label:'EBITDA margin',type:'margin',pct:true,vals:pctOf(A('ebitda'))});
+    g({label:'Interest Expense',type:'line',vals:A('interest'),yoy:yk('interest')});
+    g({label:'Net Income',type:'total',vals:A('netIncome'),yoy:yk('netIncome')});
+    g({label:'Net margin',type:'margin',pct:true,vals:pctOf(A('netIncome'))});
+    return R;
+  }
+  cf6(...arrays){ // per-month sum; null (n/a) for a month only if every component is null
+    return [0,1,2,3,4,5].map(i => arrays.every(a=>a[i]==null) ? null : arrays.reduce((s,a)=>s+(a[i]||0),0));
+  }
+  cfsRows(){ return this.cfsDirect(); }
+  cfsDirect(){
+    if(!this.state.data||!this.state.data.cashflowDirect) return [];
+    const c=this.state.data.cashflowDirect; const R=[];
+    const collected=this.cf6(c.amazonPayouts,c.shopifyPayouts);
+    const op=this.cf6(c.amazonPayouts,c.shopifyPayouts,c.creditCardPayment,c.salaries,c.contractors,c.supplierWires,c.bankFees,c.taxes);
+    const fin=this.cf6(c.sbaLoan,c.creditLine);
+    R.push(this.mkRow({label:'Operating',type:'section',vals:[]}));
+    R.push(this.mkRow({label:'Amazon payouts (cash in)',type:'line',vals:c.amazonPayouts}));
+    R.push(this.mkRow({label:'Shopify payouts (cash in)',type:'line',vals:c.shopifyPayouts}));
+    R.push(this.mkRow({label:'Total cash collected',type:'strong',vals:collected}));
+    R.push(this.mkRow({label:'Credit card payment',type:'line',vals:c.creditCardPayment}));
+    R.push(this.mkRow({label:'Payroll (Pierre)',type:'line',vals:c.salaries}));
+    R.push(this.mkRow({label:'Contractors',type:'line',vals:c.contractors}));
+    R.push(this.mkRow({label:'Supplier / import wires',type:'line',vals:c.supplierWires}));
+    R.push(this.mkRow({label:'Bank fees',type:'line',vals:c.bankFees}));
+    R.push(this.mkRow({label:'Taxes',type:'line',vals:c.taxes}));
+    R.push(this.mkRow({label:'Cash from Operating',type:'strong',vals:op}));
+    R.push(this.mkRow({label:'Financing',type:'section',vals:[]}));
+    R.push(this.mkRow({label:'SBA loan payment',type:'line',vals:c.sbaLoan}));
+    R.push(this.mkRow({label:'Credit line draws / (repayments)',type:'line',vals:c.creditLine}));
+    R.push(this.mkRow({label:'Cash from Financing',type:'strong',vals:fin}));
+    R.push(this.mkRow({label:'Net Change in Cash',type:'strong',vals:c.net}));
+    R.push(this.mkRow({label:'Beginning Bank Balance',type:'line',vals:c.beginningBank,ytdVal:c.beginningBank[0]}));
+    R.push(this.mkRow({label:'Ending Bank Balance',type:'total',vals:c.endingBank,ytdVal:c.endingBank[c.endingBank.length-1]}));
+    return R;
+  }
+  cfsRecon(){
+    const c=this.state.data.cashflowRecon; const R=[];
+    R.push(this.mkRow({label:'Net Income (accrual, from P&L)',type:'line',vals:c.netIncome}));
+    R.push(this.mkRow({label:'Adjustments to reconcile to cash',type:'section',vals:[]}));
+    R.push(this.mkRow({label:'Owner comp: cash draw vs. accrual',type:'line',vals:c.ownerCompAdj}));
+    R.push(this.mkRow({label:'Working capital & non-cash timing',type:'line',vals:c.workingCapital}));
+    R.push(this.mkRow({label:'Credit-line financing (draws/repay)',type:'line',vals:c.creditLineFin}));
+    R.push(this.mkRow({label:'Net Change in Cash (= bank change)',type:'total',vals:c.net}));
+    return R;
+  }
+
+  renderVals(){
+    const tab=this.state.tab;
+    const isStatement = tab==='pnl'||tab==='cfs';
+    const data=this.state.data;
+    const meta=(data&&data.meta)||{};
+    const fy=meta.fiscalYear||2026, py=meta.priorYear||(fy-1);
+    const MM=this.M();
+    const period=this.state.period;
+    const isYtd = period==='ytd';
+    const lastLabel = this.monthsFull[MM.length-1] || MM[MM.length-1];
+    const pLabel = isYtd ? ('FY'+fy+' · YTD') : this.monthsFull[period]+' '+fy;
+    const opts = MM.map((m,i)=>({label:m, onClick:this.setPeriod(i), style:this.pillStyle(period===i)}));
+    opts.push({label:'YTD', onClick:this.setPeriod('ytd'), style:this.pillStyle(isYtd)});
+    return {
+      periodLabel:pLabel,
+      overviewSub:(isYtd?('Year-to-date through '+lastLabel+' '+fy):this.monthsFull[period]+' '+fy)+' · compared to prior month and prior year',
+      unitNote: this.full()?'Figures in U.S. dollars':'Figures in thousands (USD)',
+      isOverview: tab==='overview',
+      isStatement,
+      goOverview:this.goTo('overview'), goPnl:this.goTo('pnl'), goCfs:this.goTo('cfs'),
+      tabOverview:this.tabStyle(tab==='overview'),
+      tabPnl:this.tabStyle(tab==='pnl'),
+      tabCfs:this.tabStyle(tab==='cfs'),
+      periodOpts:opts,
+      showSpark: this.props.showSparklines!==false,
+      showTrend: this.props.showTrend!==false,
+      kpis:this.kpiCards(),
+      trendBars:this.trend(),
+      acosBars:this.acosTrend(),
+      unitsBars:this.unitsTrend(),
+      cmBars:this.cmTrend(),
+      cfCards:[
+        {name:'Direct (cash)', active:this.state.cfView==='direct',
+         body:'The real money in and out of your Bank of America account this month — Amazon & Shopify payouts coming in; card payments, payroll, contractors, supplier wires, and loan payments going out. The bottom line equals exactly how much your bank balance changed.'},
+        {name:'Reconciliation', active:this.state.cfView==='recon',
+         body:'Starts from the Income Statement net profit (accrual) and adjusts for timing and non-cash items — owner draws vs. accrued pay, working-capital / payout timing, and credit-line financing — to reach that same cash change. It explains why profit and cash differ.'}
+      ].map(c=>({name:c.name, body:c.body, tag:c.active?'  ·  showing now':'',
+         style:'background:'+(c.active?'#FBFAF6':'#F4F1EA')+'; border:1px solid '+(c.active?'#B8955C':'#E4DFD4')+'; border-radius:4px; padding:12px 15px;'+(c.active?'':' opacity:0.75;')})),
+      colHeads:[...MM,'YTD','YoY'],
+      headGrid:this.gridTpl(' height:46px; background:#22314B; color:#EFEBE2;'),
+      stmtRows: !isStatement ? [] : (tab==='cfs'? this.cfsRows() : this.pnlRows()),
+      stmtTitle: tab==='cfs'?'Cash Flow Statement':'Income Statement',
+      isCfs: tab==='cfs',
+      cfViewOpts:[
+        {label:'Direct (cash)', onClick:this.setCfView('direct'), style:this.pillStyle(this.state.cfView==='direct')},
+        {label:'Reconciliation', onClick:this.setCfView('recon'), style:this.pillStyle(this.state.cfView==='recon')}
+      ],
+      stmtNote: tab==='cfs'
+        ? 'Actual cash in and out of the Bank of America account, by month'
+        : 'Monthly actuals with FY'+fy+' year-to-date and prior-year (FY'+py+') comparison'
+    };
+  }
+}
+</script>
+</body>
+</html>
