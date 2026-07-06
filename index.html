@@ -449,34 +449,40 @@ class Component extends DCLogic {
 
     const money=v=>(v<0?'-$':'$')+Math.abs(Math.round(v)).toLocaleString('en-US');
 
-    // net revenue by channel (gross less that channel's returns & promos) + returns magnitude
-    let amzRev,amzRevLy,dtcRev,dtcRevLy,ret,retLy;
+    // all tiles source straight from the model IS lines (isDetail) so they tie to the P&L exactly.
+    // Revenue tiles = GROSS revenue; margins are % of NET revenue (standard).
+    let grossTot,grossTotLy,amzG,amzGLy,dtcG,dtcGLy,netRev,netRevLy,gProfit,gProfitLy,ebit,ebitLy,nInc,nIncLy,ret,retLy;
     const DD=this.state.data&&this.state.data.isDetail;
     if(DD){
-      amzRev  = DD.amazonGross.cur.map((v,i)=> v+(DD.amazonReturns.cur[i]||0)+(DD.amazonPromos.cur[i]||0));
-      amzRevLy= DD.amazonGross.pri.map((v,i)=> v+(DD.amazonReturns.pri[i]||0)+(DD.amazonPromos.pri[i]||0));
-      dtcRev  = DD.shopifyGross.cur.map((v,i)=> v+(DD.shopifyReturns.cur[i]||0)+(DD.shopifyPromos.cur[i]||0));
-      dtcRevLy= DD.shopifyGross.pri.map((v,i)=> v+(DD.shopifyReturns.pri[i]||0)+(DD.shopifyPromos.pri[i]||0));
-      ret     = DD.adjTotal.cur.map(v=>Math.abs(v||0));
-      retLy   = DD.adjTotal.pri.map(v=>Math.abs(v||0));
+      const G=k=>DD[k].cur, P=k=>DD[k].pri;
+      grossTot=G('grossTotal'); grossTotLy=P('grossTotal');
+      amzG=G('amazonGross');    amzGLy=P('amazonGross');
+      dtcG=G('shopifyGross');   dtcGLy=P('shopifyGross');
+      netRev=G('netRevenue');   netRevLy=P('netRevenue');
+      gProfit=G('grossProfit'); gProfitLy=P('grossProfit');
+      ebit=G('ebitda');         ebitLy=P('ebitda');
+      nInc=G('netIncome');      nIncLy=P('netIncome');
+      ret=G('amazonReturns').map((v,i)=>Math.abs((v||0)+(G('shopifyReturns')[i]||0)));
+      retLy=P('amazonReturns').map((v,i)=>Math.abs((v||0)+(P('shopifyReturns')[i]||0)));
     } else {
-      amzRev=d.marketplace; amzRevLy=ly.marketplace; dtcRev=d.dtc; dtcRevLy=ly.dtc;
+      grossTot=d.rev; grossTotLy=ly.rev; amzG=d.marketplace; amzGLy=ly.marketplace; dtcG=d.dtc; dtcGLy=ly.dtc;
+      netRev=d.rev; netRevLy=ly.rev; gProfit=d.gp; gProfitLy=ly.gp; ebit=d.ebitda; ebitLy=ly.ebitda; nInc=d.net; nIncLy=ly.net;
       ret=d.rev.map(()=>0); retLy=ly.rev.map(()=>0);
     }
 
     const cfgs=[
-      {label:'Revenue', kind:'money', cur:d.rev, ly:ly.rev, sub:'Net sales'},
-      {label:'Amazon Revenue', kind:'money', cur:amzRev, ly:amzRevLy, sub:'Net · marketplace'},
-      {label:'DTC (Shopify) Revenue', kind:'money', cur:dtcRev, ly:dtcRevLy, sub:'Net · direct-to-consumer'},
-      {label:'Returns', kind:'money', cur:ret, ly:retLy, lowerBetter:true, sub:'Returns & adjustments'},
+      {label:'Revenue', kind:'money', cur:grossTot, ly:grossTotLy, sub:'Gross revenue'},
+      {label:'Amazon Revenue', kind:'money', cur:amzG, ly:amzGLy, sub:'Gross · marketplace'},
+      {label:'DTC (Shopify) Revenue', kind:'money', cur:dtcG, ly:dtcGLy, sub:'Gross · direct-to-consumer'},
+      {label:'Returns', kind:'money', cur:ret, ly:retLy, lowerBetter:true, sub:'Amazon + Shopify returns'},
       {label:'Units Sold', kind:'count', cur:x.units, ly:x.unitsLy, sub:'Orders · packs'},
       {label:'Pairs Sold', kind:'count', cur:x.pairs, ly:x.pairsLy, sub:'Individual pairs'},
       {label:'Avg. Order Value', kind:'aov', cur:x.aov, ly:x.aovLy, sub:'Per DTC order'},
       {label:'ACOS', kind:'pctDirect', cur:x.acos, ly:x.acosLy, lowerBetter:true, sub:'Ad spend / ad sales'},
-      {label:'Gross Margin', kind:'pct', num:d.gp, den:d.rev, lyNum:ly.gp, lyDen:ly.rev, sub:'of revenue'},
-      {label:'Contribution Margin', kind:'pct', num:x.cm, den:d.rev, lyNum:x.cmLy, lyDen:ly.rev, subMoney:x.cm},
-      {label:'EBITDA', kind:'money', cur:d.ebitda, ly:ly.ebitda, subPctOf:d.rev},
-      {label:'Net Margin', kind:'pct', num:d.net, den:d.rev, lyNum:ly.net, lyDen:ly.rev, sub:'of revenue'}
+      {label:'Gross Margin', kind:'pct', num:gProfit, den:netRev, lyNum:gProfitLy, lyDen:netRevLy, sub:'of net revenue'},
+      {label:'Contribution Margin', kind:'pct', num:x.cm, den:netRev, lyNum:x.cmLy, lyDen:netRevLy, subMoney:x.cm},
+      {label:'EBITDA', kind:'money', cur:ebit, ly:ebitLy, subPctOf:netRev},
+      {label:'Net Margin', kind:'pct', num:nInc, den:netRev, lyNum:nIncLy, lyDen:netRevLy, sub:'of net revenue'}
     ];
 
     const build=(cfg)=>{
