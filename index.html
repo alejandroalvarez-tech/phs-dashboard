@@ -398,8 +398,8 @@ class Component extends DCLogic {
     const t=v/1000; const s=Math.abs(t).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1});
     return v<0 ? '('+s+')' : s;
   }
-  pct(v){ return (v==null||isNaN(v))?'':v.toFixed(1)+'%'; }
-  yoyStr(a,b){ if(!b) return '—'; const p=(a-b)/Math.abs(b)*100; return (p>=0?'+':'')+p.toFixed(1)+'%'; }
+  pct(v){ if(v==null||isNaN(v)) return ''; return v<0 ? '('+Math.abs(v).toFixed(1)+'%)' : v.toFixed(1)+'%'; }
+  yoyStr(a,b){ if(!b) return '—'; const p=(a-b)/Math.abs(b)*100; return p>=0 ? '+'+p.toFixed(1)+'%' : '('+Math.abs(p).toFixed(1)+'%)'; }
   sum(a){ return a.reduce((x,y)=>x+(y==null?0:y),0); }
   avg(a){ const f=a.filter(v=>v!=null); return f.length?this.sum(f)/f.length:null; }
 
@@ -488,7 +488,7 @@ class Component extends DCLogic {
 
       const isPct = cfg.kind==='pct'||cfg.kind==='pctDirect';
       let valStr;
-      if(isPct) valStr=(curVal==null||isNaN(curVal))?'n/a':curVal.toFixed(1)+'%';
+      if(isPct) valStr=(curVal==null||isNaN(curVal))?'n/a':(curVal<0?'('+Math.abs(curVal).toFixed(1)+'%)':curVal.toFixed(1)+'%');
       else if(cfg.kind==='count') valStr=Math.round(curVal).toLocaleString('en-US');
       else if(cfg.kind==='aov') valStr=(curVal==null||isNaN(curVal))?'n/a':'$'+Math.round(curVal);
       else valStr=money(curVal);
@@ -499,8 +499,9 @@ class Component extends DCLogic {
         let good = cfg.lowerBetter ? diff<0 : diff>0;
         if(Math.abs(diff)<1e-9) good=true;
         const arrow = diff>0.001?'▲ ':(diff<-0.001?'▼ ':'– ');
-        const txt = isPct ? (diff>=0?'+':'')+diff.toFixed(1)+' pts'
-                          : (diff>=0?'+':'')+(diff/Math.abs(ref)*100).toFixed(1)+'%';
+        let txt;
+        if(isPct){ txt = diff>=0 ? '+'+diff.toFixed(1)+' pts' : '('+Math.abs(diff).toFixed(1)+' pts)'; }
+        else { const pc=diff/Math.abs(ref)*100; txt = pc>=0 ? '+'+pc.toFixed(1)+'%' : '('+Math.abs(pc).toFixed(1)+'%)'; }
         const col = Math.abs(diff)<1e-9 ? '#9A948A' : (good?'#2F6B4F':'#A23B34');
         return {label, txt:arrow+txt, style:'font-size:14px; font-weight:600; color:'+col+';'};
       };
@@ -536,7 +537,7 @@ class Component extends DCLogic {
         month:MM[i],
         top:'$'+Math.round(v).toLocaleString('en-US'),
         h:(v/max*140).toFixed(0)+'px',
-        margin:(d.ebitda[i]/v*100).toFixed(1)+'%',
+        margin:this.pct(d.ebitda[i]/v*100),
         fill: on ? 'linear-gradient(180deg,#C7A96A,#B8955C)' : 'linear-gradient(180deg,#2E3E5C,#22314B)',
         labelColor: on ? '#B8955C' : '#1B1B1A',
         labelWeight: on ? '700' : '600'
@@ -578,7 +579,7 @@ class Component extends DCLogic {
     const max=Math.max(...x.cm.map(v=>Math.abs(v)))||1;
     return x.cm.map((v,i)=>{ const on=i===sel; const m=d.rev[i]?(v/d.rev[i]*100):0; return {
       month:MM[i], top:'$'+Math.round(v).toLocaleString('en-US'),
-      h:(Math.abs(v)/max*140).toFixed(0)+'px', margin:m.toFixed(1)+'%',
+      h:(Math.abs(v)/max*140).toFixed(0)+'px', margin:this.pct(m),
       fill: on?'linear-gradient(180deg,#C7A96A,#B8955C)':'linear-gradient(180deg,#3E6E52,#2E5540)',
       labelColor: on?'#B8955C':'#1B1B1A', labelWeight: on?'700':'600'
     };});
@@ -587,38 +588,41 @@ class Component extends DCLogic {
   // ================= STATEMENT TABLES =================
   rowStyle(type){
     const grid=this.gridTpl();
-    if(type==='group')    return grid+' height:42px; background:#FBFAF6; border-top:1px solid #EAE4D8;';
-    if(type==='detail')   return grid+' height:34px;';
-    if(type==='strong')   return grid+' height:44px; border-top:1px solid #22314B;';
-    if(type==='total')    return grid+' height:52px; background:#F5F1E8; border-top:2px solid #22314B;';
-    if(type==='margin')   return grid+' height:30px;';
-    if(type==='section')  return grid+' height:40px; background:#22314B0D;';
-    return grid+' height:38px;';
+    if(type==='section')  return grid+' height:37px; background:#ECE6D9; border-top:1px solid #E0DACE; border-bottom:1px solid #E7E1D4;';
+    if(type==='group')    return grid+' height:45px; background:#F4EFE4; border-top:1px solid #E7E1D4;';
+    if(type==='detail')   return grid+' height:33px; background:#fff; border-bottom:1px solid #F5F2EB;';
+    if(type==='strong')   return grid+' height:47px; background:#E9EEF6; border-top:1px solid #C6D2E4; border-bottom:1px solid #C6D2E4; box-shadow:inset 4px 0 0 #22314B;';
+    if(type==='total')    return grid+' height:58px; background:#22314B; box-shadow:inset 4px 0 0 #C7A96A;';
+    if(type==='margin')   return grid+' height:28px; background:#F5F8FC;';
+    return grid+' height:36px; background:#fff; border-bottom:1px solid #F5F2EB;';
   }
   labelStyle(type,indent){
-    let s='display:flex; align-items:center; ';
+    let s='display:flex; align-items:center; min-width:0; ';
     const pl = indent?('padding-left:'+(indent*22)+'px;'):'';
-    if(type==='group')   return s+pl+'font-size:14px; font-weight:600; color:#1B1B1A;';
-    if(type==='detail')  return s+pl+'font-size:13px; color:#3A3833; font-weight:400;';
-    if(type==='strong')  return s+pl+'font-size:14px; font-weight:700; color:#22314B;';
-    if(type==='total')   return s+pl+"font-family:'Newsreader',serif; font-size:18px; font-weight:600; color:#22314B;";
-    if(type==='margin')  return s+pl+'font-size:12px; font-style:italic; color:#6B6760; font-weight:400;';
-    if(type==='section') return s+pl+'font-size:11px; letter-spacing:0.12em; text-transform:uppercase; font-weight:600; color:#22314B;';
+    if(type==='section') return s+pl+'font-size:11px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; color:#22314B;';
+    if(type==='group')   return s+pl+'font-size:14px; font-weight:700; color:#22314B;';
+    if(type==='detail')  return s+pl+'font-size:13px; color:#4A463F; font-weight:400;';
+    if(type==='strong')  return s+pl+'font-size:15px; font-weight:700; color:#22314B; letter-spacing:0.01em;';
+    if(type==='total')   return s+pl+"font-family:'Newsreader',serif; font-size:19px; font-weight:600; color:#F5F1E8;";
+    if(type==='margin')  return s+pl+'font-size:12px; font-style:italic; color:#7A756B; font-weight:400;';
     return s+pl+'font-size:13px; color:#3A3833; font-weight:400;';
   }
   cellStyle(type){
     let s='text-align:right; ';
-    if(type==='group')  return s+'font-size:13px; font-weight:600; color:#1B1B1A;';
-    if(type==='detail') return s+'font-size:12.5px; color:#3A3833;';
-    if(type==='strong') return s+'font-size:13px; font-weight:700; color:#22314B;';
-    if(type==='total')  return s+'font-size:15px; font-weight:700; color:#22314B;';
-    if(type==='margin') return s+'font-size:12px; font-style:italic; color:#6B6760;';
     if(type==='section')return s;
+    if(type==='group')  return s+'font-size:13.5px; font-weight:600; color:#1B1B1A;';
+    if(type==='detail') return s+'font-size:12.5px; color:#4A463F;';
+    if(type==='strong') return s+'font-size:14px; font-weight:700; color:#22314B;';
+    if(type==='total')  return s+"font-family:'Newsreader',serif; font-size:17px; font-weight:600; color:#F5F1E8;";
+    if(type==='margin') return s+'font-size:12px; font-style:italic; color:#7A756B;';
     return s+'font-size:13px; color:#3A3833;';
   }
   yoyCell(type,txt){
-    const green = txt&&txt[0]==='+';
-    const col = txt==='—'||!txt ? '#C4BEB2' : (green?'#2F6B4F':'#A23B34');
+    const pos = txt&&txt[0]==='+';
+    const neutral = txt==='—'||!txt;
+    const col = type==='total'
+      ? (neutral?'#B9C2D2':(pos?'#7FD0A8':'#E8A29B'))
+      : (neutral?'#C4BEB2':(pos?'#2F6B4F':'#A23B34'));
     let base='text-align:right; font-size:12px; font-weight:600; color:'+col+';';
     if(type==='margin') base='text-align:right; font-size:11px; font-style:italic; color:'+col+';';
     return base;
