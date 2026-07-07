@@ -245,7 +245,11 @@
       <div style="background:#fff; border:1px solid #E4DFD4; border-radius:3px; overflow:hidden;">
         <div style="{{ headGrid }}">
           <div style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; font-weight:600; color:#9DB0CE;">Line item</div>
-          <sc-for list="{{ colHeads }}" as="h" hint-placeholder-count="8">
+          <sc-for list="{{ monthHeads }}" as="h" hint-placeholder-count="6">
+            <div class="num" style="{{ h.style }}">{{ h.label }}</div>
+          </sc-for>
+          <div></div>
+          <sc-for list="{{ sumHeads }}" as="h" hint-placeholder-count="2">
             <div class="num" style="{{ h.style }}">{{ h.label }}</div>
           </sc-for>
         </div>
@@ -255,6 +259,7 @@
             <sc-for list="{{ r.cells }}" as="c">
               <div class="num" style="{{ c.style }}"><span class="{{ c.cls }}" style="{{ c.vstyle }}">{{ c.v }}<span class="note-pop">{{ c.note }}</span></span></div>
             </sc-for>
+            <div></div>
             <div class="num" style="{{ r.ytdStyle }}">{{ r.ytd }}</div>
             <div class="num" style="{{ r.yoyStyle }}">{{ r.yoy }}</div>
           </div>
@@ -420,7 +425,7 @@ class Component extends DCLogic {
 
   M(){ return (this.state.data&&this.state.data.meta&&this.state.data.meta.months)||this.months; }
   lastIdx(){ return this.M().length-1; }
-  gridTpl(extra){ const n=this.M().length; return 'display:grid; grid-template-columns:250px repeat('+(n+2)+',1fr); align-items:center; padding:0 24px;'+(extra||''); }
+  gridTpl(extra){ const n=this.M().length; return 'display:grid; grid-template-columns:250px repeat('+n+',1fr) 40px repeat(2,1fr); align-items:center; padding:0 24px;'+(extra||''); }
 
   goTo(t){ return ()=>this.setState({tab:t}); }
   setPeriod(v){ return ()=>this.setState({period:v}); }
@@ -675,7 +680,7 @@ class Component extends DCLogic {
       onClick: o.group ? this.toggle(o.group) : null,
       style: this.rowStyle(o.type),
       labelStyle: this.labelStyle(o.type,o.indent||0),
-      ytdStyle: this.cellStyle(o.type)+' border-left:2px solid '+(o.type==='total'?'rgba(245,241,232,0.5)':'rgba(34,49,75,0.30)')+'; padding-left:16px;',
+      ytdStyle: this.cellStyle(o.type),
       yoyStyle: this.yoyCell(o.type, (o.pct||o.growth)?'—':yoy),
       cells, ytd, yoy: (o.pct||o.growth)? (o.yoy||'—') : yoy
     };
@@ -866,7 +871,8 @@ class Component extends DCLogic {
          body:'Starts from the Income Statement net profit (accrual) and adjusts for timing and non-cash items — owner draws vs. accrued pay, working-capital / payout timing, and credit-line financing — to reach that same cash change. It explains why profit and cash differ.'}
       ].map(c=>({name:c.name, body:c.body, tag:c.active?'  ·  showing now':'',
          style:'background:'+(c.active?'#FBFAF6':'#F4F1EA')+'; border:1px solid '+(c.active?'#B8955C':'#E4DFD4')+'; border-radius:4px; padding:12px 15px;'+(c.active?'':' opacity:0.75;')})),
-      colHeads:(()=>{const b='text-align:right; font-size:12px; font-weight:600; letter-spacing:0.04em; color:#EFEBE2;'; return [...MM.map(m=>({label:m,style:b})), {label:'YTD',style:b+' border-left:2px solid rgba(255,255,255,0.55); padding-left:16px;'}, {label:'YoY',style:b}];})(),
+      monthHeads: MM.map(m=>({label:m, style:'text-align:right; font-size:12px; font-weight:600; letter-spacing:0.04em; color:#EFEBE2;'})),
+      sumHeads: [{label:'YTD', style:'text-align:right; font-size:12px; font-weight:600; letter-spacing:0.04em; color:#EFEBE2;'},{label:'YoY', style:'text-align:right; font-size:12px; font-weight:600; letter-spacing:0.04em; color:#EFEBE2;'}],
       headGrid:this.gridTpl(' height:46px; background:#22314B; color:#EFEBE2;'),
       stmtRows: !isStatement ? [] : (tab==='cfs'? this.cfsRows() : this.pnlRows()),
       stmtTitle: tab==='cfs'?'Cash Flow Statement':'Income Statement',
