@@ -872,7 +872,7 @@ class Component extends DCLogic {
       ].map(c=>({name:c.name, body:c.body, tag:c.active?'  ·  showing now':'',
          style:'background:'+(c.active?'#FBFAF6':'#F4F1EA')+'; border:1px solid '+(c.active?'#B8955C':'#E4DFD4')+'; border-radius:4px; padding:12px 15px;'+(c.active?'':' opacity:0.75;')})),
       monthHeads: MM.map(m=>({label:m, style:'text-align:right; font-size:12px; font-weight:600; letter-spacing:0.04em; color:#EFEBE2;'})),
-      sumHeads: [{label:'YTD', style:'text-align:right; font-size:12px; font-weight:600; letter-spacing:0.04em; color:#EFEBE2;'},{label:'YoY', style:'text-align:right; font-size:12px; font-weight:600; letter-spacing:0.04em; color:#EFEBE2;'}],
+      sumHeads: [{label:'YTD', style:'text-align:right; font-size:12px; font-weight:700; letter-spacing:0.06em; color:#D3AE6A;'},{label:'YoY', style:'text-align:right; font-size:12px; font-weight:700; letter-spacing:0.06em; color:#D3AE6A;'}],
       headGrid:this.gridTpl(' height:46px; background:#22314B; color:#EFEBE2;'),
       stmtRows: !isStatement ? [] : (tab==='cfs'? this.cfsRows() : this.pnlRows()),
       stmtTitle: tab==='cfs'?'Cash Flow Statement':'Income Statement',
