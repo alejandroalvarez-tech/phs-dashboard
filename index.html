@@ -246,7 +246,7 @@
         <div style="{{ headGrid }}">
           <div style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; font-weight:600; color:#9DB0CE;">Line item</div>
           <sc-for list="{{ colHeads }}" as="h" hint-placeholder-count="8">
-            <div class="num" style="text-align:right; font-size:12px; font-weight:600; letter-spacing:0.04em; color:#EFEBE2;">{{ h }}</div>
+            <div class="num" style="{{ h.style }}">{{ h.label }}</div>
           </sc-for>
         </div>
         <sc-for list="{{ stmtRows }}" as="r" hint-placeholder-count="16">
@@ -675,7 +675,7 @@ class Component extends DCLogic {
       onClick: o.group ? this.toggle(o.group) : null,
       style: this.rowStyle(o.type),
       labelStyle: this.labelStyle(o.type,o.indent||0),
-      ytdStyle: this.cellStyle(o.type),
+      ytdStyle: this.cellStyle(o.type)+' border-left:1px solid '+(o.type==='total'?'rgba(245,241,232,0.30)':'#DAD3C4')+'; padding-left:10px;',
       yoyStyle: this.yoyCell(o.type, (o.pct||o.growth)?'—':yoy),
       cells, ytd, yoy: (o.pct||o.growth)? (o.yoy||'—') : yoy
     };
@@ -866,7 +866,7 @@ class Component extends DCLogic {
          body:'Starts from the Income Statement net profit (accrual) and adjusts for timing and non-cash items — owner draws vs. accrued pay, working-capital / payout timing, and credit-line financing — to reach that same cash change. It explains why profit and cash differ.'}
       ].map(c=>({name:c.name, body:c.body, tag:c.active?'  ·  showing now':'',
          style:'background:'+(c.active?'#FBFAF6':'#F4F1EA')+'; border:1px solid '+(c.active?'#B8955C':'#E4DFD4')+'; border-radius:4px; padding:12px 15px;'+(c.active?'':' opacity:0.75;')})),
-      colHeads:[...MM,'YTD','YoY'],
+      colHeads:(()=>{const b='text-align:right; font-size:12px; font-weight:600; letter-spacing:0.04em; color:#EFEBE2;'; return [...MM.map(m=>({label:m,style:b})), {label:'YTD',style:b+' border-left:1px solid rgba(255,255,255,0.30); padding-left:10px;'}, {label:'YoY',style:b}];})(),
       headGrid:this.gridTpl(' height:46px; background:#22314B; color:#EFEBE2;'),
       stmtRows: !isStatement ? [] : (tab==='cfs'? this.cfsRows() : this.pnlRows()),
       stmtTitle: tab==='cfs'?'Cash Flow Statement':'Income Statement',
