@@ -789,7 +789,8 @@ class Component extends DCLogic {
     return R;
   }
   cf6(...arrays){ // per-month sum; null (n/a) for a month only if every component is null
-    return [0,1,2,3,4,5].map(i => arrays.every(a=>a[i]==null) ? null : arrays.reduce((s,a)=>s+(a[i]||0),0));
+    const n=Math.max(0,...arrays.map(a=>a?a.length:0));
+    return Array.from({length:n},(_,i) => arrays.every(a=>a[i]==null) ? null : arrays.reduce((s,a)=>s+(a[i]||0),0));
   }
   cfsRows(){ return this.cfsDirect(); }
   cfsDirect(){
